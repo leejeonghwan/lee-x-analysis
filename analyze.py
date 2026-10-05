@@ -38,7 +38,7 @@ XY = TSNE(n_components=2, perplexity=30, init='pca', random_state=0,
           learning_rate='auto', metric='cosine').fit_transform(P)
 XY = (XY - XY.mean(0)) / XY.std(0)
 
-K = 8
+K = 10
 km = KMeans(n_clusters=K, n_init=20, random_state=0).fit(V)
 lab = km.labels_
 

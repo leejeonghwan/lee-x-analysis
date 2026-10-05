@@ -14,4 +14,4 @@ import pandas as pd
 df = pd.read_csv('posts.csv', dtype={'tweet_id': str})
 ```
 
-수집 시점: 2026-09-08
+수집 시점: 2026-10-05

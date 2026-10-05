@@ -5,8 +5,48 @@
 
 **결과 보기**
 
-- [월별 게시 빈도 (5년)](https://leejeonghwan.github.io/lee-x-analysis/) — 62개월 추이와 정치 일정
-- [메시지 지도](https://leejeonghwan.github.io/lee-x-analysis/map.html) — 799건을 문장 임베딩으로 2차원에 펼친 주제 지도
+- [월별 게시 빈도 (5년)](https://leejeonghwan.github.io/lee-x-analysis/) — 63개월 추이와 정치 일정
+- [메시지 지도](https://leejeonghwan.github.io/lee-x-analysis/map.html) — 924건을 문장 임베딩으로 2차원에 펼친 주제 지도
+- [메시지 지도 (임베드용)](https://leejeonghwan.github.io/lee-x-analysis/embed.html) — 기사에 붙이는 용도
+
+## 기사에 붙이기
+
+지도만 떼어낸 `embed.html`을 iframe으로 붙입니다. 워드프레스라면 '사용자 정의 HTML' 블록에 그대로 넣으면 됩니다.
+
+```html
+<iframe src="https://leejeonghwan.github.io/lee-x-analysis/embed.html"
+        title="이재명 대통령 X 메시지 지도"
+        width="100%" height="720" loading="lazy"
+        style="border:1px solid #e3e2dd;border-radius:8px;max-width:100%"></iframe>
+```
+
+모바일에서는 내용이 짧아지므로 높이를 줄이고 싶다면 아래를 함께 넣습니다.
+임베드가 자기 높이를 `postMessage`로 알려주므로 부모 페이지가 받아서 맞춥니다.
+
+```html
+<script>
+window.addEventListener('message', function (e) {
+  if (!e.data || e.data.type !== 'lee-x-embed:height') return;
+  document.querySelectorAll('iframe[src*="lee-x-analysis/embed.html"]')
+    .forEach(function (f) { f.style.height = e.data.height + 'px'; });
+});
+</script>
+```
+
+**옵션** — 쿼리스트링으로 조절합니다.
+
+| 파라미터 | 값 | 설명 |
+|---|---|---|
+| `theme` | `light` / `dark` | 지정하지 않으면 독자의 기기 설정을 따릅니다 |
+| `clusters` | 군집 번호 최대 3개, 쉼표로 구분 | 처음부터 강조할 주제. 기본값 `5,2,9`(순방 현장·부동산·세제·반론·논쟁) |
+
+```
+embed.html?theme=light&clusters=2,9
+```
+
+군집 번호는 `data/clusters.csv`에 있습니다. 한 번에 셋까지만 색으로 뜨는데,
+색각 이상이 있는 독자도 구분할 수 있는 조합이 세 가지까지이기 때문입니다.
+넷째를 누르면 가장 먼저 고른 것이 회색으로 돌아갑니다.
 
 ---
 

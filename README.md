@@ -15,7 +15,7 @@
 
 ```html
 <iframe src="https://leejeonghwan.github.io/lee-x-analysis/embed.html"
-        title="이재명 대통령 X 메시지 지도"
+        title="이재명(대통령) X 게시물 분석"
         width="100%" height="720" loading="lazy"
         style="border:1px solid #e3e2dd;border-radius:8px;max-width:100%"></iframe>
 ```

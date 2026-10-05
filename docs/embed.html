@@ -9,15 +9,15 @@
   :root{color-scheme:dark;
     --ground:#0f1116;--surface:#171a21;--surface-2:#1f2330;
     --ink:#f1f3f7;--ink-2:#a4abbb;--muted:#6f7687;--rule:#2b3040;
-    --dot:#4a5162;--acc1:#3987e5;--acc2:#d95926;--acc3:#199e70;}
+    --dot:#4a5162;--c0:#3987e5;--c1:#d95926;--c2:#199e70;--c3:#b07cc6;--c4:#c98500;--c5:#189aa8;--c6:#d55181;--c7:#008300;--c8:#9085e9;--c9:#e66767;}
   @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;
     --ground:#ffffff;--surface:#ffffff;--surface-2:#f2f1ed;
     --ink:#12141a;--ink-2:#4e5361;--muted:#8a8f9c;--rule:#e3e2dd;
-    --dot:#bcbfc8;--acc1:#2a78d6;--acc2:#eb6834;--acc3:#1baf7a;}}
+    --dot:#bcbfc8;--c0:#2a78d6;--c1:#eb6834;--c2:#1baf7a;--c3:#9b5fb5;--c4:#eda100;--c5:#0f727e;--c6:#e87ba4;--c7:#008300;--c8:#4a3aa7;--c9:#e34948;}}
   :root[data-theme="light"]{color-scheme:light;
     --ground:#ffffff;--surface:#ffffff;--surface-2:#f2f1ed;
     --ink:#12141a;--ink-2:#4e5361;--muted:#8a8f9c;--rule:#e3e2dd;
-    --dot:#bcbfc8;--acc1:#2a78d6;--acc2:#eb6834;--acc3:#1baf7a;}
+    --dot:#bcbfc8;--c0:#2a78d6;--c1:#eb6834;--c2:#1baf7a;--c3:#9b5fb5;--c4:#eda100;--c5:#0f727e;--c6:#e87ba4;--c7:#008300;--c8:#4a3aa7;--c9:#e34948;}
   *{box-sizing:border-box}
   html,body{margin:0}
   body{background:var(--ground);color:var(--ink);
@@ -30,11 +30,11 @@
   .chip{background:var(--surface-2);border:1px solid var(--rule);color:var(--ink-2);border-radius:999px;
     padding:4px 11px;font-size:11.5px;cursor:pointer;font-family:inherit;line-height:1.4}
   .chip:hover{color:var(--ink)}
-  .chip:focus-visible{outline:2px solid var(--acc1);outline-offset:2px}
+  .chip:focus-visible{outline:2px solid var(--c0);outline-offset:2px}
   .chip b{font-family:"IBM Plex Mono",monospace;font-weight:400;opacity:.65;margin-left:5px}
   canvas{display:block;width:100%;height:auto;cursor:crosshair;border-radius:4px}
   .ctl{display:flex;align-items:center;gap:11px;margin-top:10px;font-size:11.5px;color:var(--muted)}
-  input[type=range]{flex:1;accent-color:var(--acc1);min-width:80px}
+  input[type=range]{flex:1;accent-color:var(--c0);min-width:80px}
   .ctl button{background:var(--surface-2);border:1px solid var(--rule);color:var(--ink-2);
     border-radius:999px;padding:3px 10px;font-size:11.5px;cursor:pointer;font-family:inherit}
   .tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;max-width:300px;
@@ -70,11 +70,11 @@
 <script>
 const D = JSON.parse(document.getElementById('viz').textContent);
 const P = D.points, NAMES = D.names, MONTHS = D.months, K = Object.keys(NAMES).length;
-const TRIO = ['--acc1','--acc2','--acc3'];
+const HUE = c => '--c' + c;
 const qs = new URLSearchParams(location.search);
 if (qs.get('theme') === 'light' || qs.get('theme') === 'dark')
   document.documentElement.setAttribute('data-theme', qs.get('theme'));
-let sel = (qs.get('clusters') || '5,2,9').split(',').map(Number).filter(n => n >= 0 && n < K).slice(0, 3);
+let sel = (qs.get('clusters') || '5,2,9').split(',').map(Number).filter(n => n >= 0 && n < K);
 let mIdx = MONTHS.length;
 
 const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
@@ -97,18 +97,19 @@ function draw(){
   ctx.globalAlpha = .5; ctx.fillStyle = col('--dot');
   P.forEach(p=>{ if (sel.includes(p.c) && visible(p)) return;
     ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), (visible(p) ? 2.6 : 1.7) * S, 0, 6.2832); ctx.fill(); });
-  sel.forEach((c,i)=>{ ctx.globalAlpha = .92; ctx.fillStyle = col(TRIO[i]);
+  sel.forEach(c=>{ ctx.globalAlpha = .92; ctx.fillStyle = col(HUE(c));
     P.forEach(p=>{ if (p.c !== c || !visible(p)) return;
       ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3.5 * S, 0, 6.2832); ctx.fill(); }); });
   ctx.globalAlpha = 1;
+  if (sel.length > 4) return;   // 라벨이 겹치면 칩이 범례 역할을 한다
   ctx.font = '600 ' + Math.round(13 * S) + 'px "IBM Plex Sans KR", sans-serif';
   ctx.textAlign = 'center';
-  sel.forEach((c,i)=>{
+  sel.forEach(c=>{
     const pts = P.filter(p => p.c === c && visible(p)); if (!pts.length) return;
     const mx = pts.reduce((s,p)=>s+sx(p.x),0)/pts.length, my = pts.reduce((s,p)=>s+sy(p.y),0)/pts.length;
     ctx.lineWidth = 3.5 * S; ctx.strokeStyle = col('--ground');
     ctx.strokeText(NAMES[c], mx, my - 8 * S);
-    ctx.fillStyle = col(TRIO[i]); ctx.fillText(NAMES[c], mx, my - 8 * S);
+    ctx.fillStyle = col(HUE(c)); ctx.fillText(NAMES[c], mx, my - 8 * S);
   });
 }
 
@@ -119,18 +120,18 @@ for (let c = 0; c < K; c++){
   b.innerHTML = NAMES[c] + '<b>' + D.sizes[c] + '</b>';
   b.addEventListener('click', ()=>{
     const at = sel.indexOf(c);
-    if (at >= 0) sel.splice(at,1); else { if (sel.length >= 3) sel.shift(); sel.push(c); }
+    if (at >= 0) sel.splice(at,1); else sel.push(c);
     sync(); draw();
   });
   chipBox.appendChild(b);
 }
 function sync(){
   [...chipBox.children].forEach((el,i)=>{
-    const k = sel.indexOf(i);
-    el.setAttribute('aria-pressed', String(k >= 0));
-    el.style.background = k >= 0 ? col(TRIO[k]) : '';
-    el.style.borderColor = k >= 0 ? col(TRIO[k]) : '';
-    el.style.color = k >= 0 ? '#fff' : '';
+    const on = sel.includes(i);
+    el.setAttribute('aria-pressed', String(on));
+    el.style.background = on ? col(HUE(i)) : '';
+    el.style.borderColor = on ? col(HUE(i)) : '';
+    el.style.color = on ? '#fff' : '';
   });
 }
 

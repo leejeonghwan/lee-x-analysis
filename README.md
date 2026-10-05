@@ -38,15 +38,15 @@ window.addEventListener('message', function (e) {
 | 파라미터 | 값 | 설명 |
 |---|---|---|
 | `theme` | `light` / `dark` | 지정하지 않으면 독자의 기기 설정을 따릅니다 |
-| `clusters` | 군집 번호 최대 3개, 쉼표로 구분 | 처음부터 강조할 주제. 기본값 `5,2,9`(순방 현장·부동산·세제·반론·논쟁) |
+| `clusters` | 군집 번호 최대 3개, 쉼표로 구분 | 처음부터 강조할 주제. 기본값 `5,2,8`(순방 현장·부동산·세제·반론·논쟁) |
 
 ```
-embed.html?theme=light&clusters=2,9
+embed.html?theme=light&clusters=2,8
 ```
 
-군집 번호는 `data/clusters.csv`에 있습니다. 열 개를 한꺼번에 켜도 되고,
+군집 번호는 `data/clusters.csv`에 있습니다. 아홉 개를 한꺼번에 켜도 되고,
 각 군집은 고정된 색을 씁니다. 색은 색각 이상(적록·청황) 시뮬레이션으로
-인접 쌍 분리도를 검증한 10색 조합입니다. 넷 이하를 켜면 지도 위에 군집 이름이
+인접 쌍 분리도를 검증한 9색 조합입니다. 넷 이하를 켜면 지도 위에 군집 이름이
 직접 찍히고, 그보다 많으면 라벨이 겹치므로 위쪽 칩이 범례 역할을 합니다.
 
 ---
@@ -104,7 +104,7 @@ X 이용약관은 게시물 본문의 대량 재배포를 제한하고 게시물
 |---|---|
 | `data/monthly_counts.csv` | 63개월 월별 게시물 수 (`month, posts, replies, active_days`) |
 | `data/posts.csv` | 취임 후 924건의 ID·시각·군집·t-SNE 좌표·좋아요 수·원문 링크 |
-| `data/clusters.csv` | 10개 군집의 라벨, 규모, 특징어 |
+| `data/clusters.csv` | 9개 군집의 라벨, 규모, 특징어 |
 | `data/monthly_composition.csv` | 월별 × 군집별 건수 |
 
 `posts.csv` 컬럼:
@@ -143,7 +143,7 @@ X 검색 API(`SearchTimeline`)를 월 단위로 쪼개 커서 페이지네이션
 1. URL·멘션·후원회 푸터를 제거하고 본문을 정규화
 2. [`minishlab/potion-multilingual-128M`](https://huggingface.co/minishlab/potion-multilingual-128M) 정적 임베딩으로 벡터화 (torch 불필요)
 3. PCA 50차원 → t-SNE 2차원 (cosine)
-4. k-means(k=10) 군집, 클래스별 TF-IDF로 특징어 추출
+4. k-means(k=10) 군집. 7건짜리 전산장애 군집은 성격이 가까운 치안·민생 단속에 합쳐 9개로 정리했다. 클래스별 TF-IDF로 특징어 추출
 
 ```bash
 pip install model2vec scikit-learn numpy

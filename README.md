@@ -98,12 +98,16 @@ embed.html?theme=light&clusters=2,8
 ## 데이터
 
 X 이용약관은 게시물 본문의 대량 재배포를 제한하고 게시물 ID 공유를 권장합니다.
-이 저장소는 **ID와 파생 지표만** 공개합니다. 본문은 포함하지 않으며, `collect/` 스크립트로 재수집할 수 있습니다.
+`data/` 폴더의 CSV는 **ID와 파생 지표만** 담습니다. 본문은 없습니다.
+
+다만 지도 페이지(`docs/`)에는 마우스오버로 보여주기 위한 **본문 앞 200자 발췌**가 들어 있습니다.
+전문이 아니라 검색 결과의 미리보기에 해당하는 분량이고, 전체 본문은 `collect/` 스크립트로 재수집해야 합니다.
+발췌마저 빼려면 `docs/*.html` 안의 JSON에서 `t` 필드를 지우면 되고, 그 경우 마우스오버에는 날짜·주제·좋아요 수만 남습니다.
 
 | 파일 | 내용 |
 |---|---|
 | `data/monthly_counts.csv` | 63개월 월별 게시물 수 (`month, posts, replies, active_days`) |
-| `data/posts.csv` | 취임 후 924건의 ID·시각·군집·t-SNE 좌표·좋아요 수·원문 링크 |
+| `data/posts.csv` | 취임 후 924건의 ID·시각·군집·t-SNE 좌표·좋아요 수·원문 링크 (본문 없음) |
 | `data/clusters.csv` | 9개 군집의 라벨, 규모, 특징어 |
 | `data/monthly_composition.csv` | 월별 × 군집별 건수 |
 

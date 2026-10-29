@@ -1,0 +1,143 @@
+</script>
+<script>
+const D = JSON.parse(document.getElementById('viz').textContent);
+const P = D.points, NAMES = D.names, MONTHS = D.months, K = Object.keys(NAMES).length;
+const HUE = c => '--c' + c;
+const qs = new URLSearchParams(location.search);
+if (qs.get('theme') === 'light' || qs.get('theme') === 'dark')
+  document.documentElement.setAttribute('data-theme', qs.get('theme'));
+let sel = (qs.get('clusters') || '5,2,8').split(',').map(Number).filter(n => n >= 0 && n < K);
+let mIdx = MONTHS.length;
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+function col(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+const xs = P.map(p=>p.x), ys = P.map(p=>p.y);
+const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
+const PADX = 54, PADY = 44;
+const sx = x => PADX + (x - xmin) / (xmax - xmin) * (cv.width - PADX*2);
+const sy = y => PADY + (1 - (y - ymin) / (ymax - ymin)) * (cv.height - PADY*2);
+const visible = p => mIdx >= MONTHS.length || p.m === MONTHS[mIdx];
+
+// 캔버스는 고정 해상도라 화면에서 줄어든 만큼 점·글자를 키워 준다
+function scale(){
+  const w = cv.getBoundingClientRect().width;
+  return w ? cv.width / w : 2;
+}
+function draw(){
+  const S = scale();
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.globalAlpha = .5; ctx.fillStyle = col('--dot');
+  P.forEach(p=>{ if (sel.includes(p.c) && visible(p)) return;
+    ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), (visible(p) ? 2.6 : 1.7) * S, 0, 6.2832); ctx.fill(); });
+  sel.forEach(c=>{ ctx.globalAlpha = .92; ctx.fillStyle = col(HUE(c));
+    P.forEach(p=>{ if (p.c !== c || !visible(p)) return;
+      ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3.5 * S, 0, 6.2832); ctx.fill(); }); });
+  ctx.globalAlpha = 1;
+  if (sel.length > 4) return;   // 라벨이 겹치면 칩이 범례 역할을 한다
+  ctx.font = '600 ' + Math.round(13 * S) + 'px "IBM Plex Sans KR", sans-serif';
+  ctx.textAlign = 'center';
+  sel.forEach(c=>{
+    const pts = P.filter(p => p.c === c && visible(p)); if (!pts.length) return;
+    const mx = pts.reduce((s,p)=>s+sx(p.x),0)/pts.length, my = pts.reduce((s,p)=>s+sy(p.y),0)/pts.length;
+    ctx.lineWidth = 3.5 * S; ctx.strokeStyle = col('--ground');
+    ctx.strokeText(NAMES[c], mx, my - 8 * S);
+    ctx.fillStyle = col(HUE(c)); ctx.fillText(NAMES[c], mx, my - 8 * S);
+  });
+}
+
+const chipBox = document.getElementById('chips');
+for (let c = 0; c < K; c++){
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.setAttribute('aria-pressed','false');
+  b.textContent = NAMES[c];
+  b.addEventListener('click', ()=>{
+    const at = sel.indexOf(c);
+    if (at >= 0) sel.splice(at,1); else sel.push(c);
+    sync(); draw();
+  });
+  chipBox.appendChild(b);
+}
+function sync(){
+  [...chipBox.children].forEach((el,i)=>{
+    const on = sel.includes(i);
+    el.setAttribute('aria-pressed', String(on));
+    el.style.background = on ? col(HUE(i)) : '';
+    el.style.borderColor = on ? col(HUE(i)) : '';
+    el.style.color = on ? '#fff' : '';
+  });
+}
+
+const range = document.getElementById('mRange'), mLabel = document.getElementById('mLabel');
+range.max = MONTHS.length; range.value = MONTHS.length;
+range.addEventListener('input', ()=>{
+  mIdx = +range.value;
+  mLabel.textContent = mIdx >= MONTHS.length ? '전체 기간' : MONTHS[mIdx];
+  draw(); });
+document.getElementById('mReset').addEventListener('click', ()=>{
+  mIdx = MONTHS.length; range.value = mIdx; mLabel.textContent = '전체 기간'; draw(); });
+
+const tip = document.getElementById('tip');
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function nearest(e){
+  const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (cv.width / r.width), my = (e.clientY - r.top) * (cv.height / r.height);
+  let best = null, bd = 1e9;
+  P.forEach(p=>{ if (!visible(p)) return;
+    const dx = sx(p.x) - mx, dy = sy(p.y) - my, d = dx*dx + dy*dy; if (d < bd){ bd = d; best = p; } });
+  return bd < 900 ? best : null;
+}
+cv.addEventListener('mousemove', e=>{
+  const b = nearest(e);
+  if (!b){ tip.style.opacity = 0; return; }
+  tip.innerHTML = '<div class="meta">' + b.d + ' · ' + NAMES[b.c] + ' · 좋아요 ' + b.f.toLocaleString() + '</div>' +
+    '<div class="txt">' + esc(b.t || '') + '</div>';
+  tip.style.opacity = 1;
+  tip.style.left = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 12) + 'px';
+  tip.style.top = Math.max(10, e.clientY - tip.offsetHeight - 12) + 'px';
+});
+cv.addEventListener('mouseleave', ()=> tip.style.opacity = 0);
+cv.addEventListener('click', e=>{
+  const b = nearest(e);
+  if (b){ tip.style.opacity = 0; openCard(b); }
+});
+
+// 부모 페이지에 높이를 알려준다 (반응형 iframe용)
+function postHeight(){
+  const h = Math.ceil(document.documentElement.getBoundingClientRect().height);
+  try { parent.postMessage({ type: 'lee-x-embed:height', height: h }, '*'); } catch (e) {}
+}
+window.addEventListener('load', postHeight);
+window.addEventListener('resize', ()=>{ draw(); postHeight(); });
+if (window.ResizeObserver) new ResizeObserver(postHeight).observe(document.body);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{ sync(); draw(); });
+
+// ── 점을 누르면 게시물 카드를 먼저 띄운다 ──────────────────────────────
+const ovl = document.createElement('div');
+ovl.className = 'ovl';
+ovl.innerHTML = '<div class="card" role="dialog" aria-modal="true" aria-label="게시물">' +
+  '<div class="meta"><span class="sw"></span><span class="when"></span>' +
+  '<button class="x" type="button" aria-label="닫기">×</button></div>' +
+  '<div class="body"></div>' +
+  '<a class="go" target="_blank" rel="noopener">X에서 원문 열기 ↗</a></div>';
+document.body.appendChild(ovl);
+const ovlBody = ovl.querySelector('.body'), ovlWhen = ovl.querySelector('.when'),
+      ovlGo = ovl.querySelector('.go'), ovlSw = ovl.querySelector('.sw');
+
+function closeCard(){ ovl.classList.remove('on'); ovlBody.innerHTML = ''; }
+ovl.querySelector('.x').addEventListener('click', closeCard);
+ovl.addEventListener('click', e => { if (e.target === ovl) closeCard(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
+
+function openCard(p){
+  const url = 'https://x.com/Jaemyung_Lee/status/' + p.i;
+  ovlWhen.textContent = p.d + ' · ' + NAMES[p.c] + ' · 좋아요 ' + p.f.toLocaleString();
+  ovlSw.style.background = col(HUE(p.c));
+  ovlGo.href = url;
+  ovl.classList.add('on');
+  ovlBody.textContent = p.t || '본문이 없는 게시물입니다. 아래 버튼으로 X에서 확인하세요.';
+}
+
+sync(); draw(); postHeight();
+</script>
+</body>
+</html>

@@ -1,0 +1,200 @@
+
+<script>
+const D = JSON.parse(document.getElementById('viz').textContent);
+const P = D.points, NAMES = D.names, DESCS = D.descs, MONTHS = D.months;
+const K = Object.keys(NAMES).length;
+let sel = [5,2,8], mIdx = MONTHS.length;
+const HUE = c => '--c' + c;
+
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const cs = getComputedStyle(document.documentElement);
+function col(n){ return getComputedStyle(document.body).getPropertyValue(n).trim(); }
+
+const xs = P.map(p=>p.x), ys = P.map(p=>p.y);
+const xmin = Math.min(...xs), xmax = Math.max(...xs), ymin = Math.min(...ys), ymax = Math.max(...ys);
+const PADX = 70, PADY = 60;
+function sx(x){ return PADX + (x - xmin) / (xmax - xmin) * (cv.width - PADX*2); }
+function sy(y){ return PADY + (1 - (y - ymin) / (ymax - ymin)) * (cv.height - PADY*2); }
+
+function visible(p){ return mIdx >= MONTHS.length || p.m === MONTHS[mIdx]; }
+
+function scale(){ const w = cv.getBoundingClientRect().width; return w ? cv.width / w : 2; }
+function draw(){
+  const S = scale(), dot = col('--dot');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.globalAlpha = 0.5; ctx.fillStyle = dot;
+  P.forEach(p=>{
+    if (sel.includes(p.c) && visible(p)) return;
+    ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), (visible(p) ? 2.9 : 1.9) * S, 0, 6.2832); ctx.fill();
+  });
+  sel.forEach(c=>{
+    ctx.globalAlpha = 0.92; ctx.fillStyle = col(HUE(c));
+    P.forEach(p=>{ if (p.c !== c || !visible(p)) return;
+      ctx.beginPath(); ctx.arc(sx(p.x), sy(p.y), 3.9 * S, 0, 6.2832); ctx.fill(); });
+  });
+  ctx.globalAlpha = 1;
+  if (sel.length > 4) return;   // 라벨이 겹치면 칩이 범례 역할을 한다
+  ctx.font = '600 ' + Math.round(14.5 * S) + 'px "IBM Plex Sans KR", sans-serif';
+  ctx.textAlign = 'center';
+  sel.forEach(c=>{
+    const pts = P.filter(p=>p.c===c && visible(p)); if (!pts.length) return;
+    const mx = pts.reduce((s,p)=>s+sx(p.x),0)/pts.length, my = pts.reduce((s,p)=>s+sy(p.y),0)/pts.length;
+    ctx.lineWidth = 3.5 * S; ctx.strokeStyle = col('--surface');
+    ctx.strokeText(NAMES[c], mx, my - 8 * S); ctx.fillStyle = col(HUE(c));
+    ctx.fillText(NAMES[c], mx, my - 8 * S);
+  });
+}
+window.addEventListener('resize', ()=> draw());
+
+// chips
+const chipBox = document.getElementById('chips');
+for (let c = 0; c < K; c++){
+  const b = document.createElement('button');
+  b.className = 'chip'; b.type = 'button'; b.setAttribute('aria-pressed','false');
+  b.textContent = NAMES[c];
+  b.addEventListener('click', ()=>{
+    const at = sel.indexOf(c);
+    if (at >= 0) sel.splice(at,1); else sel.push(c);
+    sync(); draw();
+  });
+  chipBox.appendChild(b);
+}
+function sync(){
+  [...chipBox.children].forEach((el,i)=>{
+    const on = sel.includes(i);
+    el.setAttribute('aria-pressed', String(on));
+    el.style.background = on ? col(HUE(i)) : '';
+    el.style.borderColor = on ? col(HUE(i)) : '';
+    el.style.color = on ? '#fff' : '';
+  });
+}
+sync();
+
+// month slider
+const range = document.getElementById('mRange'), mLabel = document.getElementById('mLabel');
+range.max = MONTHS.length;
+range.addEventListener('input', ()=>{
+  mIdx = +range.value;
+  mLabel.textContent = mIdx >= MONTHS.length ? '전체 기간' : MONTHS[mIdx];
+  draw();
+});
+document.getElementById('mReset').addEventListener('click', ()=>{
+  mIdx = MONTHS.length; range.value = mIdx; mLabel.textContent = '전체 기간'; draw();
+});
+
+// hover
+const tip = document.getElementById('tip');
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+cv.addEventListener('mousemove', e=>{
+  const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (cv.width / r.width);
+  const my = (e.clientY - r.top) * (cv.height / r.height);
+  let best = null, bd = 1e9;
+  P.forEach(p=>{
+    if (!visible(p)) return;
+    const dx = sx(p.x) - mx, dy = sy(p.y) - my, d = dx*dx + dy*dy;
+    if (d < bd){ bd = d; best = p; }
+  });
+  if (best && bd < 900){
+    tip.innerHTML = '<div class="meta">' + best.d + ' · ' + NAMES[best.c] + ' · 좋아요 ' + best.f.toLocaleString() + '</div>' +
+      '<div class="txt">' + esc(best.t || '') + '</div>';
+    tip.style.opacity = 1;
+    tip.style.left = Math.min(e.clientX + 16, window.innerWidth - tip.offsetWidth - 14) + 'px';
+    tip.style.top = Math.max(12, e.clientY - tip.offsetHeight - 14) + 'px';
+  } else tip.style.opacity = 0;
+});
+cv.addEventListener('mouseleave', ()=> tip.style.opacity = 0);
+cv.style.cursor = 'crosshair';
+cv.addEventListener('click', e=>{
+  const r = cv.getBoundingClientRect();
+  const mx = (e.clientX - r.left) * (cv.width / r.width), my = (e.clientY - r.top) * (cv.height / r.height);
+  let best=null, bd=1e9;
+  P.forEach(p=>{ if(!visible(p)) return; const dx=sx(p.x)-mx, dy=sy(p.y)-my, d=dx*dx+dy*dy; if(d<bd){bd=d;best=p;} });
+  if (best && bd < 900){ tip.style.opacity = 0; openCard(best); }
+});
+
+// facets
+const FW = 300, FH = 108, FPAD = 22, YMAX = {{YMAX}};
+const fbox = document.getElementById('facets');
+for (let c = 0; c < K; c++){
+  const div = document.createElement('div'); div.className = 'facet';
+  const vals = MONTHS.map(m => D.comp[m][c] || 0);
+  const bw = (FW - FPAD*2) / MONTHS.length;
+  let bars = '';
+  MONTHS.forEach((m,i)=>{
+    const h = vals[i] / YMAX * (FH - 26);
+    const x = FPAD + i*bw, y = FH - 18 - h;
+    const aug = (m === '2026-10');
+    bars += '<rect x="'+(x+1).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw-2).toFixed(1)+'" height="'+Math.max(h,1).toFixed(1)+'" rx="1.5" fill="var(--accent)" opacity="'+(aug?1:0.5)+'"><title>'+m+' '+vals[i]+'건</title></rect>';
+  });
+  div.innerHTML = '<h3>' + NAMES[c] + '</h3><p>' + DESCS[c] + '</p>' +
+    '<svg viewBox="0 0 '+FW+' '+FH+'" role="img" aria-label="'+NAMES[c]+' 월별 건수">' +
+    '<line x1="'+FPAD+'" x2="'+(FW-FPAD)+'" y1="'+(FH-18)+'" y2="'+(FH-18)+'" stroke="var(--rule)"/>' +
+    bars +
+    '<text x="'+FPAD+'" y="'+(FH-5)+'" fill="var(--muted)" font-size="9" font-family="IBM Plex Mono,monospace">{{AXIS_FROM}}</text>' +
+    '<text x="'+(FW-FPAD)+'" y="'+(FH-5)+'" text-anchor="end" fill="var(--muted)" font-size="9" font-family="IBM Plex Mono,monospace">{{AXIS_TO}}</text>' +
+    '</svg>';
+  fbox.appendChild(div);
+}
+
+// readings
+const R = [];
+function tot(m){ return MONTHS.includes(m) ? Object.values(D.comp[m]).reduce((a,b)=>a+b,0) : 0; }
+function grp(m, cs){ return cs.reduce((s,c)=> s + (D.comp[m][c]||0), 0); }
+const DIP = [3,5];   // 영문 외교 성명 · 순방 현장
+const DAYS = {{DAYS}};
+function perDay(m){ const [y,mo]=m.split('-').map(Number); const d = DAYS[m] || new Date(y,mo,0).getDate(); return tot(m)/d; }
+{{READINGS}}
+document.getElementById('readings').innerHTML = R.join('');
+
+// table
+let th = '<thead><tr><th>월</th><th>합계</th>';
+for (let c=0;c<K;c++) th += '<th>'+NAMES[c]+'</th>';
+th += '</tr></thead><tbody>';
+MONTHS.forEach(m=>{
+  th += '<tr><td>'+m+'</td><td>'+tot(m)+'</td>';
+  for (let c=0;c<K;c++) th += '<td>'+(D.comp[m][c]||0)+'</td>';
+  th += '</tr>';
+});
+document.getElementById('tbl').innerHTML = th + '</tbody>';
+
+// ── 점을 누르면 게시물 카드를 먼저 띄운다 ──────────────────────────────
+const ovl = document.createElement('div');
+ovl.className = 'ovl';
+ovl.innerHTML = '<div class="card" role="dialog" aria-modal="true" aria-label="게시물">' +
+  '<div class="meta"><span class="sw"></span><span class="when"></span>' +
+  '<button class="x" type="button" aria-label="닫기">×</button></div>' +
+  '<div class="body"></div>' +
+  '<a class="go" target="_blank" rel="noopener">X에서 원문 열기 ↗</a></div>';
+document.body.appendChild(ovl);
+const ovlBody = ovl.querySelector('.body'), ovlWhen = ovl.querySelector('.when'),
+      ovlGo = ovl.querySelector('.go'), ovlSw = ovl.querySelector('.sw');
+
+function closeCard(){ ovl.classList.remove('on'); ovlBody.innerHTML = ''; }
+ovl.querySelector('.x').addEventListener('click', closeCard);
+ovl.addEventListener('click', e => { if (e.target === ovl) closeCard(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCard(); });
+
+function openCard(p){
+  const url = 'https://x.com/Jaemyung_Lee/status/' + p.i;
+  ovlWhen.textContent = p.d + ' · ' + NAMES[p.c] + ' · 좋아요 ' + p.f.toLocaleString();
+  ovlSw.style.background = col(HUE(p.c));
+  ovlGo.href = url;
+  ovl.classList.add('on');
+  ovlBody.textContent = p.t || '본문이 없는 게시물입니다. 아래 버튼으로 X에서 확인하세요.';
+}
+
+// theme
+const btn = document.getElementById('themeBtn');
+function cur(){ const s = document.documentElement.getAttribute('data-theme'); if (s) return s;
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'; }
+function paint(){ btn.textContent = cur() === 'dark' ? '라이트 모드' : '다크 모드'; draw(); }
+btn.addEventListener('click', ()=>{
+  const n = cur() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', n);
+  try{ localStorage.setItem('leex2-theme', n); }catch(e){}
+  paint();
+});
+try{ const s = localStorage.getItem('leex2-theme'); if (s) document.documentElement.setAttribute('data-theme', s); }catch(e){}
+paint(); sync(); draw();
+</script>

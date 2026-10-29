@@ -20,6 +20,13 @@
  *   - 검색 API는 15분당 50건 제한이 있다. 429를 만나면 자동으로 쉰다.
  *   - 리트윗은 X 검색이 반환하지 않으므로 결과에 포함되지 않는다.
  *   - 본인 계정 세션으로 읽기만 한다. 아무것도 쓰지 않는다.
+ *
+ * 저장되는 필드
+ *   t_iso  작성 시각 (한국시간)        fav/rt/rep  좋아요·리트윗·답글 수
+ *   x      본문 (긴 글은 note_tweet)   rp/q        답글 여부 / 인용 여부
+ *   u      본문 링크의 원래 주소 배열 (t.co 를 펼친 expanded_url)
+ *   md     첨부 미디어 종류 배열 (photo / video / animated_gif)
+ *   qid    인용한 원글의 ID (인용이 아니면 null)
  */
 
 (function () {
@@ -137,6 +144,19 @@
             node.core?.user_results?.result?.core?.screen_name || null;
           if (!user || user.toLowerCase() !== handle.toLowerCase()) return;
           const note = node.note_tweet?.note_tweet_results?.result;
+          // 본문의 링크는 t.co 로 단축돼 있어 도메인을 알 수 없다. 원래 주소는
+          // entities.urls[].expanded_url 에 들어 있고, 긴 글(note_tweet)은
+          // 자기 entity_set 에 따로 들고 있다. 첨부 사진·동영상은 링크가 아니라
+          // media 로 오므로 종류만 센다.
+          const le = node.legacy.entities || {};
+          const ne = (note && note.entity_set) || {};
+          const urls = [...(le.urls || []), ...(ne.urls || [])]
+            .map((u) => u.expanded_url || u.url)
+            .filter(Boolean);
+          const media = [
+            ...((node.legacy.extended_entities || {}).media || []),
+            ...(le.media || []),
+          ];
           X.posts[node.rest_id] = {
             t_iso: new Date(new Date(node.legacy.created_at).getTime() + 9 * 3600000).toISOString(),
             x: (note && note.text) || node.legacy.full_text || '',
@@ -145,6 +165,9 @@
             rep: node.legacy.reply_count,
             rp: !!node.legacy.in_reply_to_status_id_str,
             q: !!node.legacy.is_quote_status,
+            u: [...new Set(urls)],
+            md: [...new Set(media.map((m) => m.type).filter(Boolean))],
+            qid: node.legacy.quoted_status_id_str || null,
           };
           found++;
         }
@@ -213,6 +236,7 @@
       requests: X.state.requests,
       monthsLeft: left,
       rateLimited: X.state.rateLimited,
+      pauseUntil: X.state.pauseUntil,
       done: X.state.done,
     };
   };

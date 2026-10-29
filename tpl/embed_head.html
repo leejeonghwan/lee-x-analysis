@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이재명(대통령) X 게시물 분석.</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  :root{color-scheme:dark;
+    --ground:#0f1116;--surface:#171a21;--surface-2:#1f2330;
+    --ink:#f1f3f7;--ink-2:#a4abbb;--muted:#6f7687;--rule:#2b3040;
+    --dot:#4a5162;--c0:#3987e5;--c1:#d95926;--c2:#199e70;--c3:#b07cc6;--c4:#c98500;--c5:#189aa8;--c6:#d55181;--c7:#008300;--c8:#e66767;}
+  @media (prefers-color-scheme:light){:root:not([data-theme="dark"]){color-scheme:light;
+    --ground:#ffffff;--surface:#ffffff;--surface-2:#f2f1ed;
+    --ink:#12141a;--ink-2:#4e5361;--muted:#8a8f9c;--rule:#e3e2dd;
+    --dot:#bcbfc8;--c0:#2a78d6;--c1:#eb6834;--c2:#1baf7a;--c3:#9b5fb5;--c4:#eda100;--c5:#0084b0;--c6:#e87ba4;--c7:#008300;--c8:#e34948;}}
+  :root[data-theme="light"]{color-scheme:light;
+    --ground:#ffffff;--surface:#ffffff;--surface-2:#f2f1ed;
+    --ink:#12141a;--ink-2:#4e5361;--muted:#8a8f9c;--rule:#e3e2dd;
+    --dot:#bcbfc8;--c0:#2a78d6;--c1:#eb6834;--c2:#1baf7a;--c3:#9b5fb5;--c4:#eda100;--c5:#0084b0;--c6:#e87ba4;--c7:#008300;--c8:#e34948;}
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--ground);color:var(--ink);
+    font-family:"IBM Plex Sans KR",system-ui,-apple-system,sans-serif;line-height:1.55;
+    -webkit-font-smoothing:antialiased;padding:16px}
+  .hd{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:12px}
+  .hd h1{font-size:17px;font-weight:600;margin:0;letter-spacing:-.01em}
+  .hd span{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .chip{background:var(--surface-2);border:1px solid var(--rule);color:var(--ink-2);border-radius:999px;
+    padding:4px 11px;font-size:11.5px;cursor:pointer;font-family:inherit;line-height:1.4}
+  .chip:hover{color:var(--ink)}
+  .chip:focus-visible{outline:2px solid var(--c0);outline-offset:2px}
+  .chip b{font-family:"IBM Plex Mono",monospace;font-weight:400;opacity:.65;margin-left:5px}
+  canvas{display:block;width:100%;height:auto;cursor:crosshair;border-radius:4px}
+  .ctl{display:flex;align-items:center;gap:11px;margin-top:10px;font-size:11.5px;color:var(--muted)}
+  input[type=range]{flex:1;accent-color:var(--c0);min-width:80px}
+  .ctl button{background:var(--surface-2);border:1px solid var(--rule);color:var(--ink-2);
+    border-radius:999px;padding:3px 10px;font-size:11.5px;cursor:pointer;font-family:inherit}
+  .tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;max-width:360px;
+    background:var(--surface-2);border:1px solid var(--rule);border-radius:6px;padding:9px 12px;
+    font-size:12.5px;color:var(--ink);z-index:30;box-shadow:0 8px 26px rgba(0,0,0,.3)}
+  .tip .meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted);margin-bottom:4px}
+  footer{margin-top:12px;padding-top:10px;border-top:1px solid var(--rule);
+    font-size:11px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:space-between}
+  footer a{color:var(--ink-2)}
+  .tip .txt{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;line-height:1.6}
+  .ovl{position:fixed;inset:0;background:rgba(6,8,12,.72);display:none;align-items:center;
+    justify-content:center;padding:18px;z-index:60}
+  .ovl.on{display:flex}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:10px;
+    width:min(560px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,.45);overflow:hidden}
+  .card .meta{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--rule);
+    font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+  .card .meta .sw{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .card .meta .x{margin-left:auto;background:none;border:0;color:var(--muted);cursor:pointer;
+    font-size:17px;line-height:1;padding:2px 4px;font-family:inherit}
+  .card .meta .x:hover{color:var(--ink)}
+  .card .body{padding:16px;overflow:auto;font-size:14px;color:var(--ink);line-height:1.7;
+    word-break:break-word;min-height:72px}
+  .card .body .wait{color:var(--muted);font-size:12.5px}
+  .card .go{display:block;padding:12px 16px;border-top:1px solid var(--rule);
+    font-size:12.5px;color:var(--ink-2);text-decoration:none;text-align:center}
+  .card .go:hover{color:var(--ink);background:var(--surface-2)}
+  @media (max-width:520px){ body{padding:12px} .hd h1{font-size:15px} }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="hd">
+  <h1>이재명(대통령) X 게시물 분석.</h1>
+  <span>{{RANGE_TIGHT}} · {{N}}건</span>
+</div>
+<div class="chips" id="chips"></div>
+<canvas id="cv" width="2000" height="1100"></canvas>
+<div class="ctl">
+  <span id="mLabel">전체 기간</span>
+  <input type="range" id="mRange" min="0" max="16" value="16" aria-label="기간 선택">
+  <button id="mReset" type="button">전체</button>
+</div>
+<footer>
+  <span>X 검색 전수 · 임베딩 potion-multilingual-128M · t-SNE · k-means(k=10) → 9개 군집</span>
+  <span><a href="https://leejeonghwan.github.io/lee-x-analysis/map.html" target="_blank" rel="noopener">전체 분석 보기 ↗</a></span>
+</footer>
+<div class="tip" id="tip"></div>
+<script id="viz" type="application/json">
